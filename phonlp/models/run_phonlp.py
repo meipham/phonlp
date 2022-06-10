@@ -21,7 +21,7 @@ from phonlp.models.pos import scorer as score_pos
 from phonlp.utils.conll import CoNLL
 from tqdm import tqdm
 from transformers import AdamW, AutoConfig, AutoTokenizer, get_constant_schedule, get_linear_schedule_with_warmup
-
+import os
 import pickle
 
 def parse_args():
@@ -143,11 +143,11 @@ def train(args):
     tokenizer = AutoTokenizer.from_pretrained(args["pretrained_lm"], use_fast=False)
 
     print("Loading data with batch size {}...".format(args["batch_size"]))
-    with open("C:\\Users\\uyenpp\\Documents\\phonlp\\PhoNLP\\phonlp\\models\\vocab", 'rb') as f: 
+    with open(args['pretrained_lm'] + "/vocab", 'rb') as f: 
         vocab = pickle.load(f)
 
     config_phobert = AutoConfig.from_pretrained(args["pretrained_lm"], output_hidden_states=True)
-    pretrained_model = "PhoNLP\\phonlp\\phonlp.pt"
+    pretrained_model = args['pretrained_lm'] + "/phonlp.pt"
     trainer = JointTrainer(args, vocab, pretrained_model, config_phobert, args["cuda"])
     #POS
     train_batch_pos = DataLoaderPOS(
