@@ -338,7 +338,12 @@ def train(args):
                     assert len(dev_preds_ner[i]) == len(dev_gold_tags[i])
 
                 print(
-                    "step {}: dev_las_score = {:.4f}, dev_uas_score = {:.4f}, dev_pos = {:.4f}, dev_ner_p = {:.4f}, dev_ner_r = {:.4f}, dev_ner_f1 = {:.4f}".format(
+                    """step {}: dev_las_score = {:.4f}, 
+                        dev_uas_score = {:.4f}, 
+                        dev_pos = {:.4f}, 
+                        dev_ner_p = {:.4f}, 
+                        dev_ner_r = {:.4f}, 
+                        dev_ner_f1 = {:.4f}""".format(
                         global_step, las_dev, uas_dev, accuracy_pos_dev, p, r, f1
                     )
                 )
@@ -380,12 +385,15 @@ def train(args):
             assert len(dev_preds_ner[i]) == len(dev_gold_tags[i])
 
         train_loss = train_loss / len(train_batch_pos)  # avg loss per batch
-        train_loss_dep = train_loss_dep / len(train_batch_pos)
+        train_loss_dep = train_loss_dep / len(train_batch_dep)
         train_loss_pos = train_loss_pos / len(train_batch_pos)
-        train_loss_ner = train_loss_ner / len(train_batch_pos)
+        train_loss_ner = train_loss_ner / len(train_batch_ner)
 
         print(
-            "step {}: train_loss = {:.6f}, train_loss_dep = {:.6f}, train_loss_pos = {:.6f}, train_loss_ner = {:.6f}, dev_las_score = {:.4f}, dev_uas_score = {:.4f}, dev_pos = {:.4f}, dev_ner_p = {:.4f}, dev_ner_r = {:.4f}, dev_ner_f1 = {:.4f} ".format(
+            """step {}: train_loss = {:.6f}, train_loss_dep = {:.6f}, train_loss_pos = {:.6f}, train_loss_ner = {:.6f}, 
+                dev_las_score = {:.4f}, dev_uas_score = {:.4f}, 
+                dev_pos = {:.4f}, 
+                dev_ner_p = {:.4f}, dev_ner_r = {:.4f}, dev_ner_f1 = {:.4f} """.format(
                 global_step,
                 train_loss,
                 train_loss_dep,
@@ -394,9 +402,7 @@ def train(args):
                 las_dev,
                 uas_dev,
                 accuracy_pos_dev,
-                p,
-                r,
-                f1,
+                p, r, f1,
             )
         )
 
@@ -421,10 +427,10 @@ def train(args):
     print("Training ended with {} epochs.".format(epoch))
 
     best_las, uas, upos, f1 = (
-        las_score_history * 100,
-        uas_score_history * 100,
-        upos_score_history * 100,
-        f1_score_history * 100,
+        las_score_history,
+        uas_score_history,
+        upos_score_history,
+        f1_score_history,
     )
     print("Best dev las = {:.2f}, uas = {:.2f}, upos = {:.2f}, f1 = {:.2f}".format(best_las, uas, upos, f1))
 
@@ -506,7 +512,7 @@ def evaluate(args):
 
     print(
         "{} POS tagging: {:.2f}, NER: {:.2f}, Dependency parsing: {:.2f}/{:.2f}".format(
-            "Evaluation results: ", accuracy_pos * 100, f1 * 100, las * 100, uas * 100
+            "Evaluation results: ", accuracy_pos, f1, las, uas
         )
     )
 
