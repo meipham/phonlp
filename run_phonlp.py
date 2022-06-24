@@ -139,7 +139,6 @@ def train(args):
     util.ensure_dir(args["save_dir"])
     model_file = args["save_dir"] + "/" + "phonlp.pt"
 
-    
     tokenizer = AutoTokenizer.from_pretrained(args["pretrained_lm"], use_fast=False)
 
     print("Loading data with batch size {}...".format(args["batch_size"]))
