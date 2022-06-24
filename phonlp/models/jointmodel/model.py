@@ -278,4 +278,4 @@ class JointModel(BertPreTrainedModel):
 
         loss = lambda_pos * loss_pos + lambda_ner * loss_ner + lambda_dep * loss_dep
         preds = preds_pos + [preds_ner] + preds_dep
-        return loss, loss_pos, loss_ner, loss_dep, preds
+        return loss_pos, loss_ner, loss_dep, loss, preds

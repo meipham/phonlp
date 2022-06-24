@@ -134,7 +134,6 @@ def main():
             input_file=args["input_file"], output_file=args["output_file"], args=args, batch_size=args["batch_size"]
         )
 
-
 def train(args):
     util.ensure_dir(args["save_dir"])
     model_file = args["save_dir"] + "/" + "phonlp.pt"
@@ -148,7 +147,8 @@ def train(args):
     config_phobert = AutoConfig.from_pretrained(args["pretrained_lm"], output_hidden_states=True)
     pretrained_model = args['pretrained_lm'] + "/phonlp.pt"
     trainer = JointTrainer(args, vocab, pretrained_model, config_phobert, args["cuda"])
-    #POS
+    
+    # POS
     train_batch_pos = DataLoaderPOS(
         args["train_file_pos"],
         args["batch_size"],
@@ -216,8 +216,6 @@ def train(args):
     system_pred_file = args["output_file_dep"]
     gold_file = args["eval_file_dep"]
 
-    # ##POS
-
     dev_gold_tags = dev_batch_ner.tags
 
     # skip training if the language does not have training or dev data
@@ -227,7 +225,7 @@ def train(args):
 
     print("Training jointmodel...")
 
-    # ###
+    ####
     tsfm = trainer.model.phobert
     for child in tsfm.children():
         for param in child.parameters():
@@ -281,8 +279,14 @@ def train(args):
             batch_ner = train_batch_ner[i]
             ###
             loss, loss_pos, loss_ner, loss_dep = trainer.update(
-                batch_dep, batch_pos, batch_ner, lambda_pos=lambda_pos, lambda_dep=lambda_dep, lambda_ner=lambda_ner
+                batch_dep=batch_dep, 
+                batch_pos=batch_pos, 
+                batch_ner=batch_ner, 
+                lambda_pos=lambda_pos, 
+                lambda_dep=lambda_dep, 
+                lambda_ner=lambda_ner
             )  # update step
+
             train_loss += loss
             train_loss_pos += loss_pos
             train_loss_dep += loss_dep
@@ -389,20 +393,11 @@ def train(args):
         train_loss_ner = train_loss_ner / len(train_batch_ner)
 
         print(
-            """step {}: train_loss = {:.6f}, train_loss_dep = {:.6f}, train_loss_pos = {:.6f}, train_loss_ner = {:.6f}, 
-                dev_las_score = {:.4f}, dev_uas_score = {:.4f}, 
-                dev_pos = {:.4f}, 
-                dev_ner_p = {:.4f}, dev_ner_r = {:.4f}, dev_ner_f1 = {:.4f} """.format(
-                global_step,
-                train_loss,
-                train_loss_dep,
-                train_loss_pos,
-                train_loss_ner,
-                las_dev,
-                uas_dev,
-                accuracy_pos_dev,
-                p, r, f1,
-            )
+            f"""step {global_step}: train_loss = {train_loss}, 
+                train_loss_dep = {train_loss_dep}, train_loss_pos = {train_loss_pos}, train_loss_ner = {train_loss_ner}, 
+                dev_las_score = {las_dev}, dev_uas_score = {uas_dev}, 
+                accuracy_pos_dev = {accuracy_pos_dev}, 
+                dev_ner_p = {p}, dev_ner_r = {r}, dev_ner_f1 = {f1} """
         )
 
         # save best model
