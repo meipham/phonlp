@@ -37,3 +37,12 @@ def score_acc(pred_pos, gold_pos):
     logger.info("POS")
     logger.info("{:.2f}".format(correct / num_words))
     return correct / num_words
+
+from sklearn.metrics import accuracy_score
+import itertools
+
+def acc_pos(pred_pos, gold_pos):
+    pred_pos = itertools.chain(*pred_pos)
+    gold_pos = itertools.chain(*gold_pos)
+    assert len(pred_pos) == len(gold_pos)
+    return accuracy_score(pred_pos, gold_pos)
