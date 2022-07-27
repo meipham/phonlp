@@ -137,15 +137,19 @@ def main():
 def train(args):
     util.ensure_dir(args["save_dir"])
     model_file = args["save_dir"] + "/" + "phonlp.pt"
+    pretrained_model = args['pretrained_lm'] + "/phonlp.pt"
 
     tokenizer = AutoTokenizer.from_pretrained(args["pretrained_lm"], use_fast=False)
 
     print("Loading data with batch size {}...".format(args["batch_size"]))
-    with open(args['pretrained_lm'] + "/vocab", 'rb') as f: 
-        vocab = pickle.load(f)
+
+    # with open(args['pretrained_lm'] + "/vocab", 'rb') as f: 
+    #     vocab = pickle.load(f)
+    checkpoint = torch.load(pretrained_model, lambda storage, loc: storage)
+    vocab = MultiVocab.load_state_dict(checkpoint["vocab"])
 
     config_phobert = AutoConfig.from_pretrained(args["pretrained_lm"], output_hidden_states=True)
-    pretrained_model = args['pretrained_lm'] + "/phonlp.pt"
+    
     trainer = JointTrainer(args, vocab, pretrained_model, config_phobert, args["cuda"])
     
     # POS
