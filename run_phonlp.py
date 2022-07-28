@@ -137,27 +137,29 @@ def main():
 def train(args):
     util.ensure_dir(args["save_dir"])
     model_file = args["save_dir"] + "/" + "phonlp.pt"
-    pretrained_model = args['pretrained_lm'] + "/phonlp.pt"
 
+    pretrained_model = args['pretrained_lm'] + "/phonlp.pt"
     tokenizer = AutoTokenizer.from_pretrained(args["pretrained_lm"], use_fast=False)
 
-    print("Loading data with batch size {}...".format(args["batch_size"]))
+    # # Load vocabulary
+    # checkpoint = torch.load(pretrained_model, lambda storage, loc: storage)
+    # vocab = MultiVocab.load_state_dict(checkpoint["vocab"])
+    
+    # Load pretrained tokenizer
+    tokenizer = AutoTokenizer.from_pretrained(args["pretrained_lm"], use_fast=False)
 
-    # with open(args['pretrained_lm'] + "/vocab", 'rb') as f: 
-    #     vocab = pickle.load(f)
-    checkpoint = torch.load(pretrained_model, lambda storage, loc: storage)
-    vocab = MultiVocab.load_state_dict(checkpoint["vocab"])
-
+    # Laod pretrained configuration
     config_phobert = AutoConfig.from_pretrained(args["pretrained_lm"], output_hidden_states=True)
     
-    trainer = JointTrainer(args, vocab, pretrained_model, config_phobert, args["cuda"])
-    
+    trainer = JointTrainer(model_file = pretrained_model, config_phobert = config_phobert, use_cuda=args["cuda"])
+
+    print("Loading data with batch size {}...".format(args["batch_size"]))
     # POS
     train_batch_pos = DataLoaderPOS(
         args["train_file_pos"],
         args["batch_size"],
         args,
-        vocab=vocab,
+        vocab=trainer.vocab,
         evaluation=False,
         tokenizer=tokenizer,
         max_seq_length=args["max_sequence_length"],
@@ -166,7 +168,7 @@ def train(args):
         args["eval_file_pos"],
         args["batch_size"],
         args,
-        vocab=vocab,
+        vocab=trainer.vocab,
         sort_during_eval=True,
         evaluation=True,
         tokenizer=tokenizer,
@@ -179,7 +181,7 @@ def train(args):
         train_doc_dep,
         args["batch_size"],
         args,
-        vocab=vocab,
+        vocab=trainer.vocab,
         evaluation=False,
         tokenizer=tokenizer,
         max_seq_length=args["max_sequence_length"],
@@ -189,7 +191,7 @@ def train(args):
         dev_doc_dep,
         args["batch_size"],
         args,
-        vocab=vocab,
+        vocab=trainer.vocab,
         sort_during_eval=True,
         evaluation=True,
         tokenizer=tokenizer,
@@ -201,7 +203,7 @@ def train(args):
         args["train_file_ner"],
         args["batch_size"],
         args,
-        vocab=vocab,
+        vocab=trainer.vocab,
         evaluation=False,
         tokenizer=tokenizer,
         max_seq_length=args["max_sequence_length"],
@@ -210,7 +212,7 @@ def train(args):
         args["eval_file_ner"],
         args["batch_size"],
         args,
-        vocab=vocab,
+        vocab=trainer.vocab,
         evaluation=True,
         tokenizer=tokenizer,
         max_seq_length=args["max_sequence_length"],
@@ -281,7 +283,7 @@ def train(args):
             batch_pos = train_batch_pos[i]
             batch_dep = train_batch_dep[i]
             batch_ner = train_batch_ner[i]
-            ###
+
             loss, loss_pos, loss_ner, loss_dep = trainer.update(
                 batch_dep=batch_dep, 
                 batch_pos=batch_pos, 
@@ -294,8 +296,8 @@ def train(args):
             train_loss += loss
             train_loss_pos += loss_pos
             train_loss_dep += loss_dep
-            train_loss_ner += loss_ner
-            ###
+            # train_loss_ner += loss_ner
+
 
             if i % args["accumulation_steps"] == 0:
                 optimizer.step()
@@ -337,33 +339,29 @@ def train(args):
                 dev_preds_upos = util.unsort(dev_preds_upos, dev_batch_pos.data_orig_idx_pos)
                 accuracy_pos_dev = score_pos.score_acc(dev_preds_upos, dev_batch_pos.upos)
 
-                for batch in dev_batch_ner:
-                    preds_ner = trainer.predict_ner(batch)
-                    dev_preds_ner += preds_ner
-                p, r, f1 = score_ner.score_by_entity(dev_preds_ner, dev_gold_tags)
-                for i in range(len(dev_batch_ner)):
-                    assert len(dev_preds_ner[i]) == len(dev_gold_tags[i])
+                # for batch in dev_batch_ner:
+                #     preds_ner = trainer.predict_ner(batch)
+                #     dev_preds_ner += preds_ner
+                # p, r, f1 = score_ner.score_by_entity(dev_preds_ner, dev_gold_tags)
+                # for i in range(len(dev_batch_ner)):
+                #     assert len(dev_preds_ner[i]) == len(dev_gold_tags[i])
 
                 print(
                     """step {}: dev_las_score = {:.4f}, 
                         dev_uas_score = {:.4f}, 
-                        dev_pos = {:.4f}, 
-                        dev_ner_p = {:.4f}, 
-                        dev_ner_r = {:.4f}, 
-                        dev_ner_f1 = {:.4f}""".format(
-                        global_step, las_dev, uas_dev, accuracy_pos_dev, p, r, f1
+                        dev_pos = {:.4f}""".format(
+                        global_step, las_dev, uas_dev, accuracy_pos_dev
                     )
                 )
 
                 # save best model
-                if las_dev + accuracy_pos_dev + f1 >= (las_score_history + upos_score_history + f1_score_history):
+                if las_dev + accuracy_pos_dev >= (las_score_history + upos_score_history):
                     las_score_history = las_dev
                     upos_score_history = accuracy_pos_dev
                     uas_score_history = uas_dev
                     f1_score_history = f1
                     trainer.save(model_file)
                     print("new best model saved.")
-                print("")
 
         print("Evaluating on dev set...")
         dev_preds_dep = []
@@ -431,7 +429,6 @@ def train(args):
         f1_score_history,
     )
     print("Best dev las = {:.2f}, uas = {:.2f}, upos = {:.2f}, f1 = {:.2f}".format(best_las, uas, upos, f1))
-
 
 def evaluate(args):
     # file paths
@@ -513,7 +510,6 @@ def evaluate(args):
             "Evaluation results: ", accuracy_pos, f1, las, uas
         )
     )
-
 
 def annotate(input_file=None, output_file=None, args=None, batch_size=1):
     model_file = args["save_dir"] + "/" + "phonlp.pt"

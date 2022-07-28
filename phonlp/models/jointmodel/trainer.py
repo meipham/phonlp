@@ -44,9 +44,10 @@ def unpack_batch(batch, use_cuda, type):
 class JointTrainer(BaseTrainer):
     """ A trainer for training models. """
 
-    def __init__(self, args=None, vocab=None, model_file=None, config_phobert=None, use_cuda=False):
+    def __init__(self, args=None, vocab=None, model_file=None, config_phobert=None, use_cuda=True):
         self.use_cuda = use_cuda
         self.config_phobert = config_phobert
+
         if model_file is not None:
             self.load(model_file)
         else:
@@ -54,7 +55,7 @@ class JointTrainer(BaseTrainer):
             self.vocab = vocab
             self.model = JointModel(args, vocab, self.config_phobert)
 
-        if self.use_cuda:
+        if self.use_cuda and torch.cuda.is_available():
             self.model.cuda()
         else:
             self.model.cpu()
