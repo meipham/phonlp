@@ -355,7 +355,10 @@ def train(args):
                 )
 
                 # save best model
-                if las_dev + accuracy_pos_dev >= (las_score_history + upos_score_history):
+                new_score = las_dev + accuracy_pos_dev
+                print(f"New score: {new_score}")
+                
+                if new_score >= (las_score_history + upos_score_history):
                     las_score_history = las_dev
                     upos_score_history = accuracy_pos_dev
                     uas_score_history = uas_dev
