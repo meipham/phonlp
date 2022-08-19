@@ -362,7 +362,7 @@ def train(args):
                     las_score_history = las_dev
                     upos_score_history = accuracy_pos_dev
                     uas_score_history = uas_dev
-                    f1_score_history = f1
+                    # f1_score_history = f1
                     trainer.save(model_file)
                     print("new best model saved.")
 
@@ -405,14 +405,18 @@ def train(args):
                 dev_ner_p = {p}, dev_ner_r = {r}, dev_ner_f1 = {f1} """
         )
 
-        # save best model
-        if las_dev + accuracy_pos_dev + f1 >= (las_score_history + upos_score_history + f1_score_history):
+        new_score = las_dev + accuracy_pos_dev
+        print(f"New score: {new_score}")
+        
+        if new_score >= (las_score_history + upos_score_history):
             las_score_history = las_dev
             upos_score_history = accuracy_pos_dev
             uas_score_history = uas_dev
-            f1_score_history = f1
+            # f1_score_history = f1
             trainer.save(model_file)
             print("new best model saved.")
+
+
         train_loss = 0
         train_loss_pos = 0
         train_loss_dep = 0
