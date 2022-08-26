@@ -75,7 +75,7 @@ class DataLoaderPOS:
 
             processed_sent = [input_ids]
             processed_sent += [firstSWindices]
-            processed_sent += [vocab["upos"].map([w[1] for w in sent])]
+            processed_sent += [vocab["upos"].map([w[4] for w in sent])]
             processed.append(processed_sent)
         return processed
 
