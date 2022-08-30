@@ -57,7 +57,7 @@ class DataLoaderPOS:
             input_ids = [cls_id]
             firstSWindices = [len(input_ids)]
             for w in sent:
-                word_token = tokenizer.encode(w[0])
+                word_token = tokenizer.encode(w[1])
                 input_ids += word_token[1 : (len(word_token) - 1)]
                 firstSWindices.append(len(input_ids))
             firstSWindices = firstSWindices[: (len(firstSWindices) - 1)]
