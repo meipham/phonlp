@@ -442,7 +442,7 @@ class BuildVocab:
     def build_vocab(self, data_dep, data_pos, data_ner):
         data = data_dep + data_pos + data_ner
         uposvocab = WordVocab(data_pos, idx=1)
-        deprelvocab = WordVocab(data_dep, idx=2)
+        deprelvocab = WordVocab(data_dep, idx=2, lower=True)
         ner_tag = TagVocab(data_ner, idx=1)
         charvocab = CharVocab(data)
         wordvocab = WordVocab(data, cutoff=7, lower=True)

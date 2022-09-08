@@ -37,17 +37,57 @@ class WordVocab(BaseVocab):
             return super().unit2id(unit)
 
     def build_vocab(self):
-        if self.lower:
-            counter = Counter([w[self.idx].lower() for sent in self.data for w in sent])
+        if self.idx==2:
+            rels = ['<PAD>',
+                '<UNK>',
+                '<EMPTY>',
+                '<ROOT>',
+                'mod',
+                'amr-unknown',
+                'in',
+                'arg0',
+                'quantity',
+                'arg1',
+                'polarity',
+                'arg3',
+                'root',
+                'out',
+                'domain-of',
+                'location',
+                'time',
+                'cause-of',
+                'conj',
+                'purpose',
+                'manner',
+                'arg4',
+                'arg2',
+                'direction',
+                'compared-to',
+                'accompanier',
+                'topic',
+                'extent',
+                'mode',
+                'vocative',
+                'condition',
+                'date',
+                'cause-of',
+                'instrument',
+                'degree',
+                'concession',
+                'organization'
+                ]
+            self._id2unit = VOCAB_PREFIX + rels
+            self._unit2id = {w: i for i, w in enumerate(self._id2unit)}
         else:
-            counter = Counter([w[self.idx] for sent in self.data for w in sent])
-        for k in list(counter.keys()):
-            if counter[k] < self.cutoff or k in self.ignore:
-                del counter[k]
+            if self.lower:
+                counter = Counter([w[self.idx].lower() for sent in self.data for w in sent])
+            else:
+                counter = Counter([w[self.idx] for sent in self.data for w in sent])
+            for k in list(counter.keys()):
+                if counter[k] < self.cutoff or k in self.ignore:
+                    del counter[k]
 
-        self._id2unit = VOCAB_PREFIX + list(sorted(list(counter.keys()), key=lambda k: counter[k], reverse=True))
-        self._unit2id = {w: i for i, w in enumerate(self._id2unit)}
-
+            
 
 class XPOSVocab(CompositeVocab):
     def __init__(self, data=None, lang="", idx=0, sep="", keyed=False):
