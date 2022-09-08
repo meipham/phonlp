@@ -38,10 +38,7 @@ class WordVocab(BaseVocab):
 
     def build_vocab(self):
         if self.idx==2:
-            rels = ['<PAD>',
-                '<UNK>',
-                '<EMPTY>',
-                '<ROOT>',
+            rels = [
                 'mod',
                 'amr-unknown',
                 'in',
