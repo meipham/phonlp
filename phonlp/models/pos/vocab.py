@@ -52,7 +52,7 @@ class WordVocab(BaseVocab):
                 'domain-of',
                 'location',
                 'time',
-                'cause-of',
+                'example',
                 'conj',
                 'purpose',
                 'manner',
@@ -71,8 +71,22 @@ class WordVocab(BaseVocab):
                 'instrument',
                 'degree',
                 'concession',
-                'organization'
-                ]
+                'organization',
+                'arg5',
+                'country',
+                'medium',
+                'name',
+                'order',
+                'poss-of',
+                'range',
+                'source',
+                'target',
+                'unit',
+                'day',
+                'month',
+                'value',
+                'year'
+            ]
             self._id2unit = VOCAB_PREFIX + rels
             self._unit2id = {w: i for i, w in enumerate(self._id2unit)}
         else:
@@ -85,7 +99,6 @@ class WordVocab(BaseVocab):
                     del counter[k]
 
             
-
 class XPOSVocab(CompositeVocab):
     def __init__(self, data=None, lang="", idx=0, sep="", keyed=False):
         super().__init__(data, lang, idx=idx, sep=sep, keyed=keyed)
