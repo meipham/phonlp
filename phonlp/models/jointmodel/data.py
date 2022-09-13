@@ -31,7 +31,7 @@ class DataLoaderPOS:
         self.sort_during_eval = sort_during_eval
 
         data = read_file(path_file)
-        self.upos = [[w[4] for w in sent] for sent in data]
+        self.upos = [[w[2] for w in sent] for sent in data]
         # handle vocab
         self.vocab = vocab
 
@@ -75,7 +75,7 @@ class DataLoaderPOS:
 
             processed_sent = [input_ids]
             processed_sent += [firstSWindices]
-            processed_sent += [vocab["upos"].map([w[4] for w in sent])]
+            processed_sent += [vocab["upos"].map([w[2] for w in sent])]
             processed.append(processed_sent)
         return processed
 
