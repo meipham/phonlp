@@ -385,41 +385,39 @@ class JointModel(BertPreTrainedModel):
         for i in range(len(data)):
             for j in range(len(data[i])):
                 if output_type == "conll":
-                    print(
-                        str(j + 1)
-                        + "\t"
-                        + data[i][j]
-                        + "\t"
-                        + "_"
-                        + "\t"
-                        + "_"
-                        + "\t"
-                        + test_preds_pos[i][j][0]
-                        + "\t"
-                        + "_"
-                        + "\t"
-                        + test_preds_dep[i][j][0]
-                        + "\t"
-                        + test_preds_dep[i][j][1]
-                        + "\t"
-                        + "_"
-                        + "\t"
+                    return str(j + 1) \
+                        + "\t"\
+                        + data[i][j] \
+                        + "\t"\
+                        + "_"\
+                        + "\t"\
+                        + "_"\
+                        + "\t"\
+                        + test_preds_pos[i][j][0]\
+                        + "\t"\
+                        + "_"\
+                        + "\t"\
+                        + test_preds_dep[i][j][0]\
+                        + "\t"\
+                        + test_preds_dep[i][j][1]\
+                        + "\t"\
+                        + "_"\
+                        + "\t"\
                         + test_preds_ner[i][j]
-                    )
+                    
                 else:
-                    print(
-                        str(j + 1)
-                        + "\t"
-                        + data[i][j]
-                        + "\t"
-                        + test_preds_pos[i][j][0]
-                        + "\t"
-                        + test_preds_ner[i][j]
-                        + "\t"
-                        + test_preds_dep[i][j][0]
-                        + "\t"
-                        + test_preds_dep[i][j][1]
-                    )
+                    return str(j + 1)\
+                        + "\t"\
+                        + data[i][j]\
+                        + "\t"\
+                        + test_preds_pos[i][j][0]\
+                        + "\t"\
+                        + test_preds_ner[i][j]\
+                        + "\t"\
+                        + test_preds_dep[i][j][0]\
+                        + "\t"\
+                        + test_preds_dep[i][j][1]\
+                    
 
     def process_data_tagger(self, batch_text):
         cls_id = 0
