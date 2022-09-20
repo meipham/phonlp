@@ -110,6 +110,63 @@ class JointModel(BertPreTrainedModel):
         self.drop_dep = nn.Dropout(args["dropout"])
         self.worddrop_dep = WordDropout(args["word_dropout"])
 
+    def pos_forward(self, tokens_phobert, first_subword, sentlens, use_soft_pos=False, upos=None):
+        
+        def pack(x):
+            return pack_padded_sequence(x, sentlens, batch_first=True)
+
+        
+        phobert_emb = self.phobert(tokens_phobert, return_dict=True)['last_hidden_state']
+
+        phobert_emb = torch.cat(
+            [torch.index_select(phobert_emb[i], 0, first_subword[i]).unsqueeze(0) for i in range(phobert_emb.size(0))],
+            dim=0,
+        )
+        if torch.cuda.is_available():
+            phobert_emb = phobert_emb.cuda()
+        phobert_emb = pack(phobert_emb)
+        
+
+        def pad(x):
+            return pad_packed_sequence(PackedSequence(x, phobert_emb.batch_sizes), batch_first=True)[0]
+
+        inputs_pos = phobert_emb.data
+        inputs_pos = self.worddrop_pos(inputs_pos, self.drop_replacement_pos)
+
+        upos_hid = F.relu(self.upos_hid(inputs_pos))
+        upos_pred = self.upos_clf(self.drop_pos(upos_hid))
+
+        preds = [pad(upos_pred).max(2)[1]]
+
+        if use_soft_pos is False:
+            upos = pack(upos).data
+            loss = self.crit_pos(upos_pred.view(-1, upos_pred.size(-1)), upos.view(-1))
+            return loss, preds
+        else:
+            return phobert_emb, F.softmax(pad(upos_pred), dim=-1)
+
+    def ner_forward(self, tokens_phobert, first_subword, word_mask, sentlens, tags):
+        def pack(x):
+            return pack_padded_sequence(x, sentlens, batch_first=True)
+
+        phobert_emb, pos_dis = self.pos_forward(tokens_phobert, first_subword, sentlens, use_soft_pos=True)
+
+        def pad(x):
+            return pad_packed_sequence(PackedSequence(x, phobert_emb.batch_sizes), batch_first=True)[0]
+
+        upos_embed_matrix_dup = self.upos_emb_matrix_ner.repeat(pos_dis.size(0), 1, 1)
+        pos_emb = torch.matmul(pos_dis, upos_embed_matrix_dup)
+        pos_emb = pack(pos_emb)
+        inputs = [phobert_emb, pos_emb]
+
+        inputs = torch.cat([x.data for x in inputs], 1)
+        inputs = self.worddrop_ner(inputs, self.drop_replacement_ner)
+        ner_pred = self.ner_tag_clf(inputs)
+
+        logits = pad(F.relu(ner_pred)).contiguous()
+        loss, trans = self.crit_ner(logits, word_mask, tags)
+        return loss, logits
+
     def tagger_forward(self, tokens_phobert, words_phobert, sentlens):
         def pack(x):
             return pack_padded_sequence(x, sentlens, batch_first=True)
@@ -155,30 +212,15 @@ class JointModel(BertPreTrainedModel):
         def pack(x):
             return pack_padded_sequence(x, sentlens, batch_first=True)
 
-        inputs = []
-        phobert_emb = self.phobert(tokens_phobert)[2][-1]
-        phobert_emb = torch.cat(
-            [torch.index_select(phobert_emb[i], 0, first_subword[i]).unsqueeze(0) for i in range(phobert_emb.size(0))],
-            dim=0,
-        )
-        if torch.cuda.is_available():
-            phobert_emb = phobert_emb.cuda()
-        phobert_emb = pack(phobert_emb)
-        inputs += [phobert_emb]
-
         def pad(x):
             return pad_packed_sequence(PackedSequence(x, phobert_emb.batch_sizes), batch_first=True)[0]
 
-        inputs_pos = inputs[0].data
-        inputs_pos = self.worddrop_pos(inputs_pos, self.drop_replacement_pos)
+        phobert_emb, pos_dis = self.pos_forward(tokens_phobert, first_subword, sentlens, use_soft_pos=True)
 
-        upos_hid = F.relu(self.upos_hid(inputs_pos))
-        upos_pred = self.upos_clf(self.drop_pos(upos_hid))
-        pos_dis = F.softmax(pad(upos_pred), dim=-1)
         upos_embed_matrix_dup = self.upos_emb_matrix_dep.repeat(pos_dis.size(0), 1, 1)
         pos_emb = torch.matmul(pos_dis, upos_embed_matrix_dup)
         pos_emb = pack(pos_emb)
-        inputs += [pos_emb]
+        inputs = [phobert_emb, pos_emb]
 
         inputs = torch.cat([x.data for x in inputs], 1)
         inputs = self.worddrop_dep(inputs, self.drop_replacement_dep)
