@@ -277,150 +277,149 @@ class JointModel(BertPreTrainedModel):
         test_preds_dep = []
         test_preds_ner = []
         for i in tqdm(range(len(data_tagger))):
-            try:
-                tokens_phobert, first_subword, words_mask, number_of_words, orig_idx, sentlens = self.get_batch(
-                    i, data_tagger
+            tokens_phobert, first_subword, words_mask, number_of_words, orig_idx, sentlens = self.get_batch(
+                i, data_tagger
+            )
+            tokens_phobert1, first_subword1, words_mask1, number_of_words1, orig_idx1, sentlens1 = self.get_batch(
+                i, data_parser
+            )
+            if torch.cuda.is_available():
+                tokens_phobert, first_subword, words_mask = (
+                    tokens_phobert.cuda(),
+                    first_subword.cuda(),
+                    words_mask.cuda(),
                 )
-                tokens_phobert1, first_subword1, words_mask1, number_of_words1, orig_idx1, sentlens1 = self.get_batch(
-                    i, data_parser
+                tokens_phobert1, first_subword1, words_mask1 = (
+                    tokens_phobert1.cuda(),
+                    first_subword1.cuda(),
+                    words_mask1.cuda(),
                 )
-                if torch.cuda.is_available():
-                    tokens_phobert, first_subword, words_mask = (
-                        tokens_phobert.cuda(),
-                        first_subword.cuda(),
-                        words_mask.cuda(),
-                    )
-                    tokens_phobert1, first_subword1, words_mask1 = (
-                        tokens_phobert1.cuda(),
-                        first_subword1.cuda(),
-                        words_mask1.cuda(),
-                    )
 
-                preds_dep = self.dep_forward(tokens_phobert1, first_subword1, sentlens1)
-                preds_pos, logits = self.tagger_forward(tokens_phobert, first_subword, sentlens)
-                batch_size = tokens_phobert.size(0)
-                # DEP
-                head_seqs = [
-                    chuliu_edmonds_one_root(adj[:l, :l])[1:] for adj, l in zip(preds_dep[0], sentlens1)
-                ]  # remove attachment for the root
-                deprel_seqs = [
-                    self.vocab["deprel"].unmap([preds_dep[1][i][j + 1][h] for j, h in enumerate(hs)])
-                    for i, hs in enumerate(head_seqs)
-                ]
-                pred_tokens_dep = [
-                    [[str(head_seqs[i][j]), deprel_seqs[i][j]] for j in range(sentlens1[i] - 1)] for i in range(batch_size)
-                ]
-                # pred_tokens_dep = util.unsort(pred_tokens_dep, orig_idx1)
+            preds_dep = self.dep_forward(tokens_phobert1, first_subword1, sentlens1)
+            preds_pos, logits = self.tagger_forward(tokens_phobert, first_subword, sentlens)
+            batch_size = tokens_phobert.size(0)
+            # DEP
+            head_seqs = [
+                chuliu_edmonds_one_root(adj[:l, :l])[1:] for adj, l in zip(preds_dep[0], sentlens1)
+            ]  # remove attachment for the root
+            deprel_seqs = [
+                self.vocab["deprel"].unmap([preds_dep[1][i][j + 1][h] for j, h in enumerate(hs)])
+                for i, hs in enumerate(head_seqs)
+            ]
+            pred_tokens = [
+                [[str(head_seqs[i][j]), deprel_seqs[i][j]] for j in range(sentlens1[i] - 1)] for i in range(batch_size)
+            ]
+            pred_tokens_dep = util.unsort(pred_tokens, orig_idx1)
 
-                # POS
-                upos_seqs = [self.vocab["upos"].unmap(sent) for sent in preds_pos[0]]
-                pred_tokens_pos = [
-                    [[upos_seqs[i][j]] for j in range(sentlens[i])] for i in range(batch_size)
-                ]  # , xpos_seqs[i][j], feats_seqs[i][j]
-                # pred_tokens_pos = util.unsort(pred_tokens_pos, orig_idx)
+            # POS
+            upos_seqs = [self.vocab["upos"].unmap(sent) for sent in preds_pos[0]]
+            pred_tokens_pos = [
+                [[upos_seqs[i][j]] for j in range(sentlens[i])] for i in range(batch_size)
+            ]  # , xpos_seqs[i][j], feats_seqs[i][j]
+            pred_tokens_pos = util.unsort(pred_tokens_pos, orig_idx)
 
-                trans = self.crit_ner._transitions.data.cpu().numpy()
-                scores = logits.data.cpu().numpy()
-                bs = logits.size(0)
-                tag_seqs = []
-                for i in range(bs):
-                    tags, _ = viterbi_decode(scores[i, : sentlens[i]], trans)
-                    tags = self.vocab["ner_tag"].unmap(tags)
-                    tag_seqs += [tags]
-                # tag_seqs = util.unsort(tag_seqs, orig_idx)
-                test_preds_ner += tag_seqs
-                test_preds_dep += pred_tokens_dep
-                test_preds_pos += pred_tokens_pos
-            except:
-                continue
-        # test_preds_dep = util.unsort(test_preds_dep, self.data_orig_idx)
-        # test_preds_pos = util.unsort(test_preds_pos, self.data_orig_idx)
-        # test_preds_ner = util.unsort(test_preds_ner, self.data_orig_idx)
-        
-        return (data, test_preds_pos, test_preds_ner, test_preds_dep)
-        
-            # f = open(output_file, "w")
-            # for i in range(len(data)):
-            #     for j in range(len(data[i])):
-            #         if output_type == "conll":
-            #             f.write(
-            #                 str(j + 1)
-            #                 + "\t"
-            #                 + data[i][j]
-            #                 + "\t"
-            #                 + "_"
-            #                 + "\t"
-            #                 + "_"
-            #                 + "\t"
-            #                 + test_preds_pos[i][j][0]
-            #                 + "\t"
-            #                 + "_"
-            #                 + "\t"
-            #                 + test_preds_dep[i][j][0]
-            #                 + "\t"
-            #                 + test_preds_dep[i][j][1]
-            #                 + "\t"
-            #                 + "_"
-            #                 + "\t"
-            #                 + test_preds_ner[i][j]
-            #                 + "\n"
-            #             )
-            #         else:
-            #             f.write(
-            #                 str(j + 1)
-            #                 + "\t"
-            #                 + data[i][j]
-            #                 + "\t"
-            #                 + test_preds_pos[i][j][0]
-            #                 + "\t"
-            #                 + test_preds_ner[i][j]
-            #                 + "\t"
-            #                 + test_preds_dep[i][j][0]
-            #                 + "\t"
-            #                 + test_preds_dep[i][j][1]
-            #                 + "\n"
-            #             )
-            #     f.write("\n")
-            # f.close()
+            trans = self.crit_ner._transitions.data.cpu().numpy()
+            scores = logits.data.cpu().numpy()
+            bs = logits.size(0)
+            tag_seqs = []
+            for i in range(bs):
+                tags, _ = viterbi_decode(scores[i, : sentlens[i]], trans)
+                tags = self.vocab["ner_tag"].unmap(tags)
+                tag_seqs += [tags]
+            tag_seqs = util.unsort(tag_seqs, orig_idx)
+            test_preds_ner += tag_seqs
+            test_preds_dep += pred_tokens_dep
+            test_preds_pos += pred_tokens_pos
+        test_preds_dep = util.unsort(test_preds_dep, self.data_orig_idx)
+        test_preds_pos = util.unsort(test_preds_pos, self.data_orig_idx)
+        test_preds_ner = util.unsort(test_preds_ner, self.data_orig_idx)
+        if text is not None:
+            return (data, test_preds_pos, test_preds_ner, test_preds_dep)
+        else:
+            f = open(output_file, "w")
+            for i in range(len(data)):
+                for j in range(len(data[i])):
+                    if output_type == "conll":
+                        f.write(
+                            str(j + 1)
+                            + "\t"
+                            + data[i][j]
+                            + "\t"
+                            + "_"
+                            + "\t"
+                            + "_"
+                            + "\t"
+                            + test_preds_pos[i][j][0]
+                            + "\t"
+                            + "_"
+                            + "\t"
+                            + test_preds_dep[i][j][0]
+                            + "\t"
+                            + test_preds_dep[i][j][1]
+                            + "\t"
+                            + "_"
+                            + "\t"
+                            + test_preds_ner[i][j]
+                            + "\n"
+                        )
+                    else:
+                        f.write(
+                            str(j + 1)
+                            + "\t"
+                            + data[i][j]
+                            + "\t"
+                            + test_preds_pos[i][j][0]
+                            + "\t"
+                            + test_preds_ner[i][j]
+                            + "\t"
+                            + test_preds_dep[i][j][0]
+                            + "\t"
+                            + test_preds_dep[i][j][1]
+                            + "\n"
+                        )
+                f.write("\n")
+            f.close()
 
     def print_out(self, output, output_type=""):
         data, test_preds_pos, test_preds_ner, test_preds_dep = output
         for i in range(len(data)):
             for j in range(len(data[i])):
                 if output_type == "conll":
-                    return str(j + 1) \
-                        + "\t"\
-                        + data[i][j] \
-                        + "\t"\
-                        + "_"\
-                        + "\t"\
-                        + "_"\
-                        + "\t"\
-                        + test_preds_pos[i][j][0]\
-                        + "\t"\
-                        + "_"\
-                        + "\t"\
-                        + test_preds_dep[i][j][0]\
-                        + "\t"\
-                        + test_preds_dep[i][j][1]\
-                        + "\t"\
-                        + "_"\
-                        + "\t"\
+                    print(
+                        str(j + 1)
+                        + "\t"
+                        + data[i][j]
+                        + "\t"
+                        + "_"
+                        + "\t"
+                        + "_"
+                        + "\t"
+                        + test_preds_pos[i][j][0]
+                        + "\t"
+                        + "_"
+                        + "\t"
+                        + test_preds_dep[i][j][0]
+                        + "\t"
+                        + test_preds_dep[i][j][1]
+                        + "\t"
+                        + "_"
+                        + "\t"
                         + test_preds_ner[i][j]
-                    
+                    )
                 else:
-                    return str(j + 1)\
-                        + "\t"\
-                        + data[i][j]\
-                        + "\t"\
-                        + test_preds_pos[i][j][0]\
-                        + "\t"\
-                        + test_preds_ner[i][j]\
-                        + "\t"\
-                        + test_preds_dep[i][j][0]\
-                        + "\t"\
-                        + test_preds_dep[i][j][1]\
-                    
+                    print(
+                        str(j + 1)
+                        + "\t"
+                        + data[i][j]
+                        + "\t"
+                        + test_preds_pos[i][j][0]
+                        + "\t"
+                        + test_preds_ner[i][j]
+                        + "\t"
+                        + test_preds_dep[i][j][0]
+                        + "\t"
+                        + test_preds_dep[i][j][1]
+                    )
 
     def process_data_tagger(self, batch_text):
         cls_id = 0
@@ -468,7 +467,7 @@ class JointModel(BertPreTrainedModel):
 
     def chunk_batches(self, data, batch_size):
         res = []
-        # (data,), self.data_orig_idx = sort_all([data], [len(x[2]) for x in data])
+        (data,), self.data_orig_idx = sort_all([data], [len(x[2]) for x in data])
         current = []
         for x in data:
             if len(current) >= batch_size:
@@ -487,11 +486,11 @@ class JointModel(BertPreTrainedModel):
         assert len(batch) == 4
         # print(batch)
         lens = [len(x) for x in batch[2]]
-        # batch, orig_idx = sort_all(batch, lens)
+        batch, orig_idx = sort_all(batch, lens)
 
         batch_words = [w for sent in batch[3] for w in sent]
         word_lens = [len(x) for x in batch_words]
-        # batch_words, word_orig_idx = sort_all([batch_words], word_lens)
+        batch_words, word_orig_idx = sort_all([batch_words], word_lens)
         batch_words = batch_words[0]  # [word1,...], word1 = list of tokens
         word_lens = [len(x) for x in batch_words]
         wordchars = get_long_tensor(batch_words, len(word_lens))
