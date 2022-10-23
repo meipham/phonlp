@@ -55,6 +55,9 @@ class DataLoaderPOS:
         processed = []
         for sent in data:
             input_ids = [cls_id]
+            root_token = ROOT_ID
+            input_ids += [root_token]
+            
             firstSWindices = [len(input_ids)]
             for w in sent:
                 word_token = tokenizer.encode(w[1])
@@ -191,8 +194,8 @@ class DataLoaderDep:
         for sent in data_dep:
             input_ids = [cls_id]
             firstSWindices = [len(input_ids)]
-            root_token = tokenizer.encode("[ROOT]")
-            input_ids += root_token[1 : (len(root_token) - 1)]
+            root_token = ROOT_ID
+            input_ids += [root_token]
             firstSWindices.append(len(input_ids))
             for w in sent:
                 word_token = tokenizer.encode(w[0])
@@ -346,6 +349,8 @@ class DataLoaderNER:
         pad_id = 1
         for sent in data:
             input_ids = [cls_id]
+            root_token = ROOT_ID
+            input_ids += [root_token]
             firstSWindices = [len(input_ids)]
             for w in sent:
                 word_token = tokenizer.encode(w[0])
